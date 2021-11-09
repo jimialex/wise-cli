@@ -22,6 +22,10 @@ function drop_database()
 
 function create_database()
 {
+	echo $('CREATE_DB')
+	echo $('CREATE_DB')
+	echo $('CREATE_DB')
+	echo $('CREATE_DB')
 	sudo -H -u postgres bash -c "psql -c \"CREATE USER ${USER} WITH NOCREATEDB NOCREATEUSER ENCRYPTED PASSWORD '${PASSWORD}'\""
 	sudo -H -u postgres bash -c "psql -c \"CREATE DATABASE ${DATABASE} WITH OWNER ${USER}\""
 #	sudo -H -u postgres bash -c "psql -c \"CREATE DATABASE test_${DATABASE} WITH OWNER ${USER}\""

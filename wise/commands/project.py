@@ -17,6 +17,7 @@ class Project:
     @staticmethod
     def push(connection, config, origin='production'):
         """ Push changes to selected server"""
+        click.echo(click.style('-> Iniciando git push', fg='cyan'))
         run('git push {0} master'.format(origin))
 
     @staticmethod
@@ -25,6 +26,7 @@ class Project:
             'DJANGO_READ_ENV_FILE=True '
             'DJANGO_SETTINGS_MODULE=config.settings.production '
             '{0}/env/bin/python'.format(config.project_path)
+            #'{0}/env/bin/python'.format('/home/alex/simicrofin')
         )
 
     @staticmethod
@@ -32,9 +34,13 @@ class Project:
         """
         Run intall command.
         """
+        click.echo(click.style('-> Iniciando instalacion', fg='cyan'))
         code_path = '{0}/code/'.format(config.project_path)
+        #code_path = '{0}/'.format('/home/alex/simicrofin')
         venv_path = '{0}/env/'.format(config.project_path)
+        #venv_path = '{0}/env/'.format('/home/alex/simicrofin')
         pip = '{0}/env/bin/pip'.format(config.project_path)
+        #pip = '{0}/env/bin/pip'.format('/home/alex/simicrofin')
 
         python = Project.get_python(config)
 
@@ -43,18 +49,33 @@ class Project:
         # TODO Check if folder exist, skip this step if this folder exists
         # TODO if an error occurrs recreate the folder
         connection.run(
-            'virtualenv -p python3 {0} --always-copy --no-site-packages'.format(venv_path),
+            'virtualenv -p python3 {0} --always-copy --no-site-packages'.format(
+                venv_path),
             warn=True, hide='both'
         )
 
         with connection.cd(code_path):
 
-            click.echo(click.style('-> Installing production requirements ', fg='cyan'))
-            connection.run('{0} install -r requirements/production.txt'.format(pip))
+            click.echo(click.style(
+                '-> Installing production requirements ', fg='cyan'))
 
+            """
+            """
+            connection.run(
+                '{0} install -r requirements/common.txt'.format(pip))
+            connection.run(
+                '{0} install -r requirements/production.txt'.format(pip))
+
+            click.echo(click.style('->', fg='cyan'))
+            click.echo(click.style('->', fg='cyan'))
             click.echo(click.style('-> Loading migrations', fg='cyan'))
+            #connection.run('{0} manage.py makemigrations'.format(python))
+
+            click.echo(click.style('-> Loading migrate', fg='cyan'))
             connection.run('{0} manage.py migrate'.format(python))
 
+            """
+            """
             click.echo(click.style('-> Collecting static files', fg='cyan'))
             connection.run(
                 '{0} manage.py collectstatic -v 0 '
@@ -73,6 +94,10 @@ class Project:
         Project.run_command(connection, config, command='migrate')
 
     @staticmethod
+    def migrations(connection, config):
+        Project.run_command(connection, config, command='makemigrations')
+
+    @staticmethod
     def load_fixtures(connection, config):
         Project.run_command(connection, config, command='loaddata')
 
@@ -89,6 +114,10 @@ class Project:
         if os.path.isfile('.env'):
             click.echo(click.style('-> Loading [.env] file', fg='cyan'))
             dest_env = '{0}/code/.env'.format(config.project_path)
+            #dest_env = '{0}/simicrofin/.env'.format('/home/alex')
+            print("")
+            print("", dest_env)
+            print("")
             connection.put(
                 local='.env',
                 remote=dest_env,
@@ -102,7 +131,8 @@ class Project:
 
     @staticmethod
     def restart(connection, config):
-        connection.sudo('supervisorctl restart {0}'.format(config.project_name))
+        connection.sudo(
+            'supervisorctl restart {0}'.format(config.project_name))
 
     @staticmethod
     def stop(connection, config):
@@ -111,6 +141,7 @@ class Project:
     @staticmethod
     def run_command(connection, config, command):
         code_path = '{0}/code/'.format(config.project_path)
+        #code_path = '{0}/simicrofin/'.format('/home/alex')
         manage_py = '{0}manage.py'.format(code_path)
         python = Project.get_python(config)
 
@@ -130,7 +161,8 @@ class Project:
                 pattern=r'.*password:',
                 response='{0}\n'.format(config.password),
             )
-            run('ssh-copy-id {0}@{1}'.format(config.project_user, config.ipv4), pty=True, watchers=[project_password])
+            run('ssh-copy-id {0}@{1}'.format(config.project_user,
+                config.ipv4), pty=True, watchers=[project_password])
         except Exception as e:
             raise Exception('Unfulfilled local requirements')
 

@@ -54,7 +54,8 @@ def settings(allow_sudo=False, only_local=False):
                         'port': config.port
                     }
                     if allow_sudo:
-                        sudo_pass = getpass('Put your [SUDO] password for User [{0}]: '.format(config.superuser))
+                        sudo_pass = getpass(
+                            'Put your [SUDO] password for User Server [{0}]: '.format(config.superuser))
                         connection_config['user'] = config.superuser
                         connection_config['config'] = Config(
                             overrides={'sudo': {'password': sudo_pass}}
@@ -64,7 +65,8 @@ def settings(allow_sudo=False, only_local=False):
 
                     if not isfile(key_filename):
                         sys.exit('[sshkey] file doesn\'t exists')
-                    connection_config['connect_kwargs'] = {'key_filename': key_filename}
+                    connection_config['connect_kwargs'] = {
+                        'key_filename': key_filename}
                     connection = Connection(**connection_config)
 
                     try:
@@ -75,7 +77,8 @@ def settings(allow_sudo=False, only_local=False):
                         click.echo(
                             click.style(
                                 'Your ssh connection isn\'t configured correctly\n'
-                                'Set your private ssh_keyfile for [{0}]'.format(connection_config['user']),
+                                'Set your private ssh_keyfile for [{0}]'.format(
+                                    connection_config['user']),
                                 fg='red'
                             )
                         )
@@ -99,11 +102,13 @@ class Pipeline:
     @staticmethod
     @settings(allow_sudo=True)
     def setup_server(connection, config):
+        """
+        """
         Server.deps(connection, config)
         Server.user(connection, config)
         Server.group(connection, config)
         Server.layout(connection, config)
-        Server.create_db(connection, config)
+        #Server.create_db(connection, config)
         Server.fix_permissions(connection, config)
         Server.git(connection, config)
         Server.add_remote(connection, config)
@@ -163,6 +168,7 @@ class Pipeline:
     @staticmethod
     @settings()
     def migrate(connection, config):
+        Project.migrations(connection, config)
         Project.migrate(connection, config)
 
     @staticmethod
@@ -198,10 +204,11 @@ class Pipeline:
                 Server.nginx(connection, config)
 
             else:
-                click.echo(click.style('[{0}] doesn\'t implemented'.format(artifact), fg='red'))
+                click.echo(click.style(
+                    '[{0}] doesn\'t implemented'.format(artifact), fg='red'))
         else:
             Server.certbot(connection, config)
-            Server.letsencrypt(connection, config)
+            #Server.letsencrypt(connection, config)
 
     @staticmethod
     @settings(allow_sudo=True)
@@ -219,6 +226,12 @@ class Pipeline:
     @settings(allow_sudo=True)
     def reset_db(connection, config):
         Server.reset_db(connection, config)
+
+    @staticmethod
+    @settings()
+    def push(connection, config):
+        Project.push(connection, config)
+        Project.environment(connection, config)
 
     # @classmethod
     # def make_backup(cls):

@@ -12,7 +12,7 @@ SOCKET_FILE=${SOCKET_PATH}/${PROJECT_NAME}.socket               # Socket file pa
 
 USER={{ project_user }}
 GROUP={{ project_group }}
-NUM_WORKERS=3                                               # workers CPUs*2+1
+NUM_WORKERS=1                                               # workers CPUs*2+1
 
 
 BIND=unix:$SOCKET_FILE                                      # Socket to binding

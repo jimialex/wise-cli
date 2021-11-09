@@ -61,8 +61,9 @@ class ProjectConfig(object):
     domain = None
     ipv4 = None
     superuser = None
-    sshkey = '~/.ssh/id_rsa.pub'
-    db_engine = 'postgres'
+    sshkey = '~/.ssh/jdgp.pub'
+    db_engine = 'mysql'
+    #db_engine = 'postgres'
     web_server = 'nginx'
     https = False
     email = 'team@xiberty.com'

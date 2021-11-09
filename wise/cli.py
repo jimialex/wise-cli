@@ -17,6 +17,11 @@ def deploy():
 
 
 @main.command()
+def push():
+    Pipeline.push()
+
+
+@main.command()
 def deps():
     Pipeline.deps()
 
@@ -55,6 +60,7 @@ def upload_key():
 def create_superuser():
     Pipeline.createsuperuser()
 
+
 @main.command()
 def resetdb():
     Pipeline.reset_db()
@@ -86,3 +92,11 @@ def test():
 def check_language():
     Pipeline.server_language()
 
+
+@main.command()
+def migrate():
+    Pipeline.migrate()
+
+@main.command()
+def clean():
+    Pipeline.clean_server()

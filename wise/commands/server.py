@@ -16,27 +16,54 @@ class Server:
         """
         Install all server dependencies.
         """
-        click.echo(click.style('\nInstalling [PROJECT] dependencies...\n', fg='green'))
+        click.echo(click.style(
+            '\nInstalling [PROJECT] dependencies...\n', fg='green'))
 
         result = connection.run('lsb_release -sc', hide=True)
         distro = result.stdout.strip()
-
-        deps_file = src(req.parse('wise'), 'wise/templates/system-{0}.txt'.format(distro))
-        result = connection.local("grep -vE '^\s*\#' {0}  | tr '\n' ' '".format(deps_file), hide=True) # noqa
+        #print("------------------------->", distro)
+        deps_file = src(req.parse('wise-cli'),
+                        'wise/templates/system-{0}.txt'.format(distro))
+        print("")
+        print("")
+        print("DEPS FILE", deps_file)
+        print("")
+        print("")
+        result = connection.local("grep -vE '^\s*\#' {0}  | tr '\n' ' '".format(deps_file), hide=True)  # noqa
         pkgs = result.stdout.strip()
-
+        """
+        """
         connection.sudo('apt-get install -y %s' % pkgs)
         connection.sudo('apt-get install -y python-virtualenv python-pip')
         connection.sudo('apt-get autoremove -y')
 
-        click.echo(click.style('\nInstalling [DATABASES] dependencies...\n', fg='green'))
+        click.echo(click.style(
+            '\nInstalling [MYSQL DATABASES] dependencies...\n', fg='green'))
 
+        """
+        connection.sudo(
+            'apt-get install -y default-libmysqlclient-dev build-essential')
+        #connection.sudo('apt-get install -y mysql-server libmysqlclient-dev')
+        #connection.sudo('apt-get remove mariadb-serve-10.1')
+        connection.sudo('apt install -y mariadb-server mariadb-client')
+        connection.sudo('apt-get install -y build-essential')
+        connection.sudo('apt-get install -y libpq-dev')
+        connection.sudo('apt-get autoremove -y')
+        """
+
+        """
         if config.db_engine == Database.POSTGRESQL.value:
-            connection.sudo('apt-get install -y postgresql postgresql-contrib libpq-dev')
-        elif config.db_engine == Database.MYSQL.value:
-            connection.sudo('apt-get install -y mysql-server libmysqlclient-dev')
+            connection.sudo(
+                'apt-get install -y postgresql postgresql-contrib libpq-dev')
+        else:
+            click.echo(click.style(
+                '\nInstalling [PROJECT] database...\n', fg='yellow'))
+            connection.sudo(
+                'apt-get install -y mysql-server libmysqlclient-dev')
+        """
 
-        click.echo(click.style('\nInstalling [WEB SERVER] dependencies...\n', fg='green'))
+        click.echo(click.style(
+            '\nInstalling [WEB SERVER] dependencies...\n', fg='green'))
         if config.web_server == WebServer.NGINX.value:
             connection.sudo('apt-get install -y nginx')
         elif config.web_server == WebServer.APACHE.value:
@@ -52,10 +79,13 @@ class Server:
             'adduser {0} {1}'.format(config.superuser, config.project_group),
             warn=True, hide='both'
         )
+        """
+        """
 
     @staticmethod
     def layout(connection, config):
-        click.echo(click.style('\n>> Configuring project layout...', fg='green'))
+        click.echo(click.style(
+            '\n>> Configuring project layout...', fg='green'))
         connection.sudo('mkdir -p '
                         '{project_path} '
                         '{project_path}/code/ '
@@ -67,11 +97,13 @@ class Server:
                         '{project_path}/bin/ '
                         '{project_path}/htdocs/ '
                         '{project_path}/htdocs/media/ '
-                        '{project_path}/htdocs/static/'.format(project_path=config.project_path),
+                        '{project_path}/htdocs/static/'.format(
+                            project_path=config.project_path),
                         hide='both')
 
         if config.deployment == Deployment.DOCKER.value:
-            connection.sudo('mkdir -p {0}/volumes/'.format(config.project_path), hide='both')
+            connection.sudo(
+                'mkdir -p {0}/volumes/'.format(config.project_path), hide='both')
 
         connection.sudo('chown -R {0}:{1} {2}'.format(config.project_user, config.project_group, config.project_path),
                         hide='both')
@@ -107,7 +139,8 @@ class Server:
                     web_server=config.web_server,
                 )
             )
-            connection.sudo('chmod -R go-rwx /etc/letsencrypt/live/{0}'.format(config.domain))
+            connection.sudo(
+                'chmod -R go-rwx /etc/letsencrypt/live/{0}'.format(config.domain))
 
             # (crontab -l ; echo "0 * * * * your_command") | sort - | uniq - | crontab -
 
@@ -133,13 +166,15 @@ class Server:
 
             click.echo(click.style('-> Let\'s Encrypt configured', fg='cyan'))
         else:
-            click.echo(click.style('-> Let\'s Encrypt configurations skipped!', fg='cyan'))
+            click.echo(click.style(
+                '-> Let\'s Encrypt configurations skipped!', fg='cyan'))
 
     @staticmethod
     def renew_ssl(connection, config):
         connection.sudo(
             'certbot renew --pre-hook "service {web_server} stop" '
-            '--post-hook "service {web_server} start"'.format(web_server=config.web_server)
+            '--post-hook "service {web_server} start"'.format(
+                web_server=config.web_server)
         )
 
     @staticmethod
@@ -157,20 +192,25 @@ class Server:
          Create project User.
         """
         click.echo(click.style('\n>> Creating Project User ...', fg='green'))
-        user_exists = connection.run('id -u {0}'.format(config.project_user), warn=True, hide='both')
+        user_exists = connection.run(
+            'id -u {0}'.format(config.project_user), warn=True, hide='both')
         if not user_exists.ok:
             connection.sudo(
-                'adduser {0} --disabled-password --gecos \"\"'.format(config.project_user),
+                'adduser {0} --disabled-password --gecos \"\"'.format(
+                    config.project_user),
                 hide=True
             )
 
-            new_password = Responder('New password:', '{0}\n'.format(config.password))
-            retype_new_password = Responder(r'Retype new password:', '{0}\n'.format(config.password))
+            new_password = Responder(
+                'New password:', '{0}\n'.format(config.password))
+            retype_new_password = Responder(
+                r'Retype new password:', '{0}\n'.format(config.password))
             connection.sudo('passwd {0}'.format(config.project_user), pty=True,
                             watchers=[new_password, retype_new_password], hide='out')
         else:
             click.echo(click.style('User alredy exists..', fg='cyan'))
-        connection.sudo('mkdir -p {0}'.format(Global.HOME_BASE_PATH), hide='both')
+        connection.sudo(
+            'mkdir -p {0}'.format(Global.HOME_BASE_PATH), hide='both')
 
     @staticmethod
     def group(connection, config):
@@ -178,7 +218,8 @@ class Server:
          Create project Group.
         """
         click.echo(click.style('\n>> Configuring project group...', fg='green'))
-        connection.sudo('groupadd --system {0}'.format(config.project_group), warn=True)
+        connection.sudo(
+            'groupadd --system {0}'.format(config.project_group), warn=True)
         connection.sudo(
             'useradd --system --gid {0} --shell /bin/bash --home {1} {2}'.format(
                 config.project_group, config.project_path, config.project_user
@@ -187,13 +228,18 @@ class Server:
 
     @staticmethod
     def create_db(connection, config):
-        click.echo(click.style('\n>> Configuring project Database...', fg='green'))
+        click.echo(click.style(
+            '\n>> Configuring project Database MySql...', fg='green'))
+        Server.mysql(connection, config)
+        """
         if config.db_engine == Database.MYSQL.value:
+            print("creando base de datos")
             Server.mysql(connection, config)
         elif config.db_engine == Database.POSTGRESQL.value:
             Server.postgresql(connection, config)
         else:
             click.echo(click.style('-> Unsupported DB Engine', fg='red'))
+        """
 
     @staticmethod
     def postgresql(connection, config):
@@ -222,40 +268,79 @@ class Server:
         3. Verify if database exist.
         4. If DB not exist create DB and assign to user.
         """
-        pass
-        # with settings(hide('warnings'), warn_only=True):
-        #     mysql_user = get_value(env.stage, "mysql_user")
-        #     mysql_pass = get_value(env.stage, "mysql_pass")
-        #
-        #     # CREATE DATABASE
-        #     run("mysql -u %(mysql_user)s -p%(mysql_password)s -e 'CREATE DATABASE %(database)s;'" % {
-        #         "mysql_user": mysql_user,
-        #         "mysql_password": mysql_pass,
-        #         "database": make_app(env.project),
-        #     })
-        #
-        #     # CREATE USER
-        #     run("mysql -u %(mysql_user)s -p%(mysql_password)s -e "
-        #         "'CREATE USER \"%(user)s\"@\"localhost\" IDENTIFIED BY \"%(password)s\";'" % {
-        #             "mysql_user": mysql_user,
-        #             "mysql_password": mysql_pass,
-        #             "user": make_user(env.project),
-        #             "password": env.passwd,
-        #         })
-        #
-        #     # GRANT USER TO DB
-        #     run("mysql -u %(mysql_user)s -p%(mysql_password)s -e "
-        #         "'GRANT ALL PRIVILEGES ON %(database)s.* TO \"%(user)s\"@\"localhost\";'" % {
-        #             "mysql_user": mysql_user,
-        #             "mysql_password": mysql_pass,
-        #             "database": make_app(env.project),
-        #             "user": make_user(env.project),
-        #         })
-        #
-        #     run("mysql -u %(mysql_user)s -p%(mysql_password)s -e 'FLUSH PRIVILEGES;'" % {
-        #         "mysql_user": mysql_user,
-        #         "mysql_password": mysql_pass,
-        #     })
+        print("----->", connection, config)
+        """
+        #result_db = connection.sudo('mariadb -c "CREATE DATABASE {0};"'.format("simicrofin_jdgp"),
+        #                            warn=True, hide='err', user='evillanueva')
+        result_user = connection.sudo(
+            'mariadb -c "CREATE USER {0} WITH ENCRYPTED PASSWORD \'{1}\';"'.format(
+                config.project_name, config.password
+            ), warn=True, hide='err', user='jgp'
+        )
+        """
+
+        result_user = connection.sudo(
+            'mariadb -c "CREATE USER \'{0}\' IDENTIFIED BY \'{1}\';"'.format(
+                config.project_name, config.password
+            ), warn=True, user='root'
+        )
+        
+        result_db = connection.sudo('mariadb -c "CREATE DATABASE \'{0}\';"'.format(config.project_name),
+                                    warn=True, hide='err', user='root')
+    
+        print ("")
+        print ("RESULTADO db", result_db)
+        print ("")
+        print ("")
+        print ("RESULTADO user", result_user)
+        print ("")
+        if not result_db.ok:
+            click.echo(click.style('-> DB alredy exists', fg='cyan'))
+        else:
+            click.echo(click.style('-> DB alredy NOT exists', fg='cyan'))
+
+        if not result_user.ok:
+            click.echo(click.style('-> DB User alredy exists', fg='cyan'))
+        else:
+            click.echo(click.style('-> DB User alredy does not exists', fg='cyan'))
+
+        #pass
+        #mysql_user = get_value(env.stage, "evillanueva")
+        #mysql_pass = get_value(env.stage, "evillanueva")
+        mysql_user = "evillanueva"
+        mysql_pass = "evillanueva"
+        
+        """
+        with settings(hide('mysql', 'warnings'), warn_only=True):
+            # CREATE DATABASE
+            run("mariadb -u %(mysql_user)s -p%(mysql_password)s -e 'CREATE DATABASE %(database)s;'" % {
+                "mysql_user": mysql_user,
+                "mysql_password": mysql_pass,
+                "database": make_app(env.project),
+            })
+            # CREATE USER
+            run("mariadb -u %(mysql_user)s -p%(mysql_password)s -e "
+                "'CREATE USER \"%(user)s\"@\"localhost\" IDENTIFIED BY \"%(password)s\";'" % {
+                    "mysql_user": mysql_user,
+                    "mysql_password": mysql_pass,
+                    "user": make_user(env.project),
+                    "password": env.passwd,
+                })
+            # GRANT USER TO DB
+            run("mariadb -u %(mysql_user)s -p%(mysql_password)s -e "
+                "'GRANT ALL PRIVILEGES ON %(database)s.* TO \"%(user)s\"@\"localhost\";'" % {
+                    "mysql_user": mysql_user,
+                    "mysql_password": mysql_pass,
+                    "database": make_app(env.project),
+                    "user": make_user(env.project),
+                })
+            run("mariadb -u %(mysql_user)s -p%(mysql_password)s -e 'FLUSH PRIVILEGES;'" % {
+                "mysql_user": mysql_user,
+                "mysql_password": mysql_pass,
+            })
+        """
+        
+
 
     @staticmethod
     def web_server(connection, config):
@@ -276,7 +361,8 @@ class Server:
         1. Setup bare Git repo.
         2. Create post-receive hook.
         """
-        click.echo(click.style('\n>> Configuring project repository...', fg='green'))
+        click.echo(click.style(
+            '\n>> Configuring project repository...', fg='green'))
         repo_git_path = Server.git_repo_path(config)
 
         connection.sudo('mkdir -p {0}'.format(repo_git_path),
@@ -310,9 +396,11 @@ class Server:
         git_remote_path = '{0}@{1}:{2}'.format(
             config.project_user, config.domain, git_repo_path
         )
+        print(git_remote_path)
 
         run('git remote remove {0}'.format(origin), warn=True, hide='both')
-        run('git remote add {0} {1}'.format(origin, git_remote_path), warn=True, hide='both')
+        run('git remote add {0} {1}'.format(
+            origin, git_remote_path), warn=True, hide='both')
 
         click.echo(click.style('-> Git origin configured', fg='cyan'))
 
@@ -324,7 +412,8 @@ class Server:
         3. Copy local config to remote config
         4. Setup new symbolic link
         """
-        click.echo(click.style('\n>> Configuring nginx setting for the project ...', fg='green'))
+        click.echo(click.style(
+            '\n>> Configuring nginx setting for the project ...', fg='green'))
 
         connection.sudo('rm /etc/nginx/sites-enabled/default',
                         hide='both', warn=True)
@@ -349,14 +438,17 @@ class Server:
             )
 
         tmp_nginx_conf = '/tmp/{0}.conf'.format(config.project_name)
-        dest_nginx_conf = '/etc/nginx/sites-available/{0}.conf'.format(config.project_name)
+        dest_nginx_conf = '/etc/nginx/sites-available/{0}.conf'.format(
+            config.project_name)
         connection.put(
             local=nginx_config,
             remote=tmp_nginx_conf,
         )
 
-        connection.sudo('mv {0} {1}'.format(tmp_nginx_conf, dest_nginx_conf), warn=True, hide='both')
-        connection.sudo('ln -s {0} /etc/nginx/sites-enabled/'.format(dest_nginx_conf), warn=True, hide='both')
+        connection.sudo('mv {0} {1}'.format(
+            tmp_nginx_conf, dest_nginx_conf), warn=True, hide='both')
+        connection.sudo(
+            'ln -s {0} /etc/nginx/sites-enabled/'.format(dest_nginx_conf), warn=True, hide='both')
 
         click.echo(click.style('-> Nginx configured', fg='cyan'))
 
@@ -376,9 +468,11 @@ class Server:
         1. Create new gunicorn start script
         2. Copy local start script template redered to server
         """
-        click.echo(click.style('\n>> Configuring gunicorn settings', fg='green'))
+        click.echo(click.style(
+            '\n>> Configuring gunicorn settings', fg='green'))
 
-        connection.sudo('mkdir -p {0}/bin'.format(config.project_path), warn=True, hide='both')
+        connection.sudo(
+            'mkdir -p {0}/bin'.format(config.project_path), warn=True, hide='both')
         tmp_gunicorn = '/tmp/start.sh'
         dest_gunicorn = '{0}/bin/start.sh'.format(config.project_path)
         connection.put(
@@ -389,11 +483,13 @@ class Server:
                     'project_path': config.project_path,
                     'project_code_path': '{0}/code/'.format(config.project_path),
                     'project_user': config.project_user,
-                    'project_group': config.project_group,}),
+                    'project_group': config.project_group, }),
             remote=tmp_gunicorn
         )
-        connection.sudo('mv {0} {1}'.format(tmp_gunicorn, dest_gunicorn), warn=True, hide='both')
-        connection.sudo('chmod +x {0}'.format(dest_gunicorn), warn=True, hide='both')
+        connection.sudo('mv {0} {1}'.format(
+            tmp_gunicorn, dest_gunicorn), warn=True, hide='both')
+        connection.sudo(
+            'chmod +x {0}'.format(dest_gunicorn), warn=True, hide='both')
         click.echo(click.style('-> Gunicorn configured', fg='cyan'))
 
     @staticmethod
@@ -403,15 +499,22 @@ class Server:
         2. Copy local config to remote config.
         3. Register new command.
         """
-        click.echo(click.style('\n>> Configuring Supervisor for project', fg='green'))
-
-        dest_supervisor = '/etc/supervisor/conf.d/{0}.conf'.format(config.project_name)
+        click.echo(click.style(
+            '\n>> Configuring Supervisor for project', fg='green'))
+        """
+        dest_supervisor = '/etc/supervisor/conf.d/{0}.conf'.format(
+            config.project_name)
+        """
+        dest_supervisor = '/etc/supervisor/conf.d/{0}.conf'.format(
+            "jgp")
 
         (Template(
             name='django_supervisor.conf',
             context={
-                'project_name': config.project_name,
-                'project_path': config.project_path,
+                #'project_name': config.project_name,
+                #'project_path': config.project_path,
+                'project_name': "jgp",
+                'project_path': "jgp/",
                 'project_user': config.project_user,
                 'project_group': config.project_group,
             }
@@ -426,12 +529,19 @@ class Server:
         2. Restart nginx.
         3. Restart supervisor.
         """
+
         connection.sudo('supervisorctl reread')
         connection.sudo('supervisorctl update')
+        click.echo(click.style('-> Supervisor reread, update...', fg='cyan'))
 
         connection.sudo('service nginx restart')
+        click.echo(click.style('-> Nginx restarted', fg='cyan'))
+
         connection.sudo('service supervisor restart')
-        connection.sudo('supervisorctl restart {0}'.format(config.project_name))
+        click.echo(click.style('-> Supervisor servie restarted', fg='cyan'))
+        connection.sudo(
+            'supervisorctl restart {0}'.format(config.project_name))
+        click.echo(click.style('-> SupervisorCTL restarted', fg='cyan'))
 
     @staticmethod
     def configure_locales(connection, config):
@@ -450,7 +560,8 @@ class Server:
             config.project_user, config.project_group, config.project_path
         ), warn=True, hide='both')
 
-        connection.sudo('chmod -R g+w {0}'.format(config.project_path), warn=True, hide='both')
+        connection.sudo(
+            'chmod -R g+w {0}'.format(config.project_path), warn=True, hide='both')
 
     @staticmethod
     def clean(connection, config):
@@ -467,13 +578,17 @@ class Server:
         click.echo(click.style('\n>> Uninstalling project ...', fg='green'))
         cmd = {'warn': True, 'hide': 'both'}
         connection.sudo('pkill -u {0}'.format(config.project_user), **cmd)
-        Server.drop_db(connection, config)
+        #Server.drop_db(connection, config)
 
-        connection.sudo('rm -f /etc/supervisor/conf.d/{0}.conf'.format(config.project_name), **cmd)
-        connection.sudo('rm -f /etc/nginx/sites-enabled/{0}.conf'.format(config.project_name), **cmd)
-        connection.sudo('rm -f /etc/nginx/sites-available/{0}.conf'.format(config.project_name), **cmd)
+        connection.sudo(
+            'rm -f /etc/supervisor/conf.d/{0}.conf'.format(config.project_name), **cmd)
+        connection.sudo(
+            'rm -f /etc/nginx/sites-enabled/{0}.conf'.format(config.project_name), **cmd)
+        connection.sudo(
+            'rm -f /etc/nginx/sites-available/{0}.conf'.format(config.project_name), **cmd)
 
-        connection.sudo('rm -rf {0}/bin/{1}.socket'.format(config.project_path, config.project_name), **cmd)
+        connection.sudo(
+            'rm -rf {0}/bin/{1}.socket'.format(config.project_path, config.project_name), **cmd)
         connection.sudo('groupdel {0}'.format(config.project_group), **cmd)
         connection.sudo('userdel -r {0}'.format(config.project_user), **cmd)
         connection.sudo('rm -rf {0}'.format(config.project_path), **cmd)
@@ -488,7 +603,8 @@ class Server:
                 user='postgres', warn=True,
             )
             connection.sudo(
-                'psql -c "DROP ROLE IF EXISTS {0};"'.format(config.project_user),
+                'psql -c "DROP ROLE IF EXISTS {0};"'.format(
+                    config.project_user),
                 user='postgres', warn=True,
             )
         elif config.db_engine == Database.MYSQL.value:
@@ -519,5 +635,3 @@ class Server:
     def reset_db(connection, config):
         Server.drop_db(connection, config)
         Server.create_db(connection, config)
-
-
